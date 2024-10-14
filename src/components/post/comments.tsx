@@ -4,9 +4,7 @@ import {
     createSignal,
     ErrorBoundary,
     For,
-    JSX,
     Match,
-    splitProps,
     Switch,
 } from "solid-js";
 import { CommentPostComponent } from "~/views/comment";
@@ -17,11 +15,10 @@ import {
     usePostPageContext,
 } from "~/views/postpage";
 import { Card } from "../ui/card";
-import { useAuthContext } from "~/lib/auth-context";
+import { useAuth } from "~/auth/auth-manager";
 import { Entity, MegalodonInterface } from "megalodon";
 import { isValidVisibility, PostOptions } from "~/views/editdialog";
 import { IoWarningOutline } from "solid-icons/io";
-import { DialogHeader, DialogTitle, DialogFooter } from "../ui/dialog";
 import {
     DropdownMenuTrigger,
     DropdownMenuContent,
@@ -101,7 +98,7 @@ export interface NewCommentEditorProps {
 }
 
 export const NewCommentEditor: Component<NewCommentEditorProps> = (props) => {
-    const authContext = useAuthContext();
+    const auth = useAuth();
     const postPageContext = usePostPageContext();
 
     const [posted, setPosted] = createSignal(false);
@@ -131,7 +128,9 @@ export const NewCommentEditor: Component<NewCommentEditorProps> = (props) => {
         setErrors(errors);
     };
     const hasErrors = createMemo(() => postErrors().length > 0);
-    const [status, setStatus] = createSignal("");
+    const [status, setStatus] = createSignal(
+        `@${props.parentStatus.account.acct} `
+    );
     const [visibility, setVisibility] = createSignal<Entity.StatusVisibility>(
         props.parentStatus.visibility
     );
@@ -175,14 +174,13 @@ export const NewCommentEditor: Component<NewCommentEditorProps> = (props) => {
         <form
             onsubmit={async (ev) => {
                 ev.preventDefault();
-                if (!authContext.authState.signedIn) {
+                if (!auth.signedIn) {
                     pushError("Can't post if you're not logged in!");
                     return;
                 }
 
                 setBusy(true);
-                const client =
-                    authContext.authState.signedIn.authenticatedClient;
+                const client = await auth.assumeSignedIn.client;
                 const post_id = await sendPost(client);
                 if (post_id) {
                     setPostId(post_id);
@@ -217,6 +215,7 @@ export const NewCommentEditor: Component<NewCommentEditorProps> = (props) => {
                         onInput={(e) => {
                             setStatus(e.currentTarget.value);
                         }}
+                        value={status()}
                     ></TextFieldTextArea>
                 </TextField>
                 <TextField
