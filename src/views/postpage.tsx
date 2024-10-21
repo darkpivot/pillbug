@@ -6,6 +6,8 @@ import {
     ErrorBoundary,
     For,
     Match,
+    onCleanup,
+    onMount,
     ResourceFetcher,
     Show,
     Signal,
@@ -17,10 +19,16 @@ import Post from "~/components/post";
 import { Status } from "megalodon/lib/src/entities/status";
 import { useAuth } from "~/auth/auth-manager";
 import { ProfileZone } from "~/components/user/profile-zone";
-import { Comment, NewCommentEditor } from "~/components/post/comments";
+import { Comment } from "~/components/post/comments";
 import { Card } from "~/components/ui/card";
 import { ErrorBox } from "~/components/error";
 import { MaybeSignedInState } from "~/auth/auth-types";
+import {
+    LayoutColumnsRoot,
+    LayoutMainColumn,
+} from "~/components/layout/columns";
+import { useFrameContext } from "~/components/frame/context";
+import { NewCommentEditor } from "~/components/editor/comments";
 
 /** Fetch the info for a post and arrange its context in a nested tree structure before returning. */
 export async function fetchPostInfoTree(
@@ -300,6 +308,7 @@ export interface LoadPostsProps {
     postId: string;
     lastRefresh: number;
     newCommentId?: string | undefined;
+    shareEditorMode: boolean;
 }
 
 export interface PostPageContextValue {
@@ -310,10 +319,23 @@ export const PostPageContext = createContext<PostPageContextValue>();
 /** A page showing a root post and nested tree of comments */
 const PostPage: Component = () => {
     const params = useParams();
+    return (
+        <PostPageForId
+            postId={params.postId}
+            shareEditorMode={false}
+        ></PostPageForId>
+    );
+};
+
+export const PostPageForId: Component<{
+    postId: string;
+    shareEditorMode: boolean;
+}> = ({ postId, shareEditorMode }) => {
     const postContext: PostPageContextValue = {
         loadProps: createSignal<LoadPostsProps>({
             lastRefresh: Date.now(),
-            postId: params.postId,
+            postId: postId,
+            shareEditorMode: shareEditorMode,
         }),
     };
     return (
@@ -352,34 +374,41 @@ const PostWithCommentTree: Component = () => {
         true
     > = (loadProps, { value, refetching }) =>
         fetchPostInfoTree(loadProps, value);
+    const [loadProps, setLoadProps] = postPageContext.loadProps;
     const [threadInfo, mutateThreadInfo] = createResource(() => {
         return {
-            loadProps: postPageContext.loadProps[0](),
+            loadProps: loadProps(),
             signedInState: auth.state,
         };
     }, threadInfoFetcher);
+
+    // i don't like the nested show here for share mode.
     return (
-        <div class="flex flex-col md:flex-row mx-1 md:mx-4 gap-4 justify-center">
-            <Show
-                when={threadInfo()?.tryGetStatus() !== undefined}
-                fallback={<div>Loading</div>}
-            >
-                <ProfileZone userInfo={threadInfo()!.tryGetStatus()!.account} />
+        <>
+            <Show when={!loadProps().shareEditorMode}>
+                <Show
+                    when={threadInfo()?.tryGetStatus() !== undefined}
+                    fallback={<div>Loading</div>}
+                >
+                    <ProfileZone
+                        userInfo={threadInfo()!.tryGetStatus()!.account}
+                    />
+                </Show>
             </Show>
-            <div class="flex-grow max-w-4xl flex flex-col justify-start">
-                <ErrorBoundary fallback={(err) => err}>
-                    <Switch>
-                        <Match when={threadInfo.loading}>
-                            <div>loading post</div>
-                        </Match>
-                        <Match when={threadInfo.state === "ready"}>
-                            <Post
-                                class="md:px-0"
-                                status={
-                                    threadInfo()?.tryGetStatus() as Status /* i don't think a placeholder should ever become root? Unless maybe it can't be found? unclear */
-                                }
-                                fetchShareParentDepth={5}
-                            />
+            <ErrorBoundary fallback={(err) => err}>
+                <Switch>
+                    <Match when={threadInfo.loading}>
+                        <div>loading post</div>
+                    </Match>
+                    <Match when={threadInfo.state === "ready"}>
+                        <Post
+                            class="md:px-0"
+                            status={
+                                threadInfo()?.tryGetStatus() as Status /* i don't think a placeholder should ever become root? Unless maybe it can't be found? unclear */
+                            }
+                            fetchShareParentDepth={5}
+                        />
+                        <Show when={!loadProps().shareEditorMode}>
                             <For each={threadInfo()?.children}>
                                 {(node, index) => <Comment node={node} />}
                             </For>
@@ -390,14 +419,14 @@ const PostWithCommentTree: Component = () => {
                                     }
                                 ></NewCommentEditor>
                             </Card>
-                        </Match>
-                        <Match when={threadInfo.error}>
-                            <div>error: {threadInfo.error}</div>
-                        </Match>
-                    </Switch>
-                </ErrorBoundary>
-            </div>
-        </div>
+                        </Show>
+                    </Match>
+                    <Match when={threadInfo.error}>
+                        <div>error: {threadInfo.error}</div>
+                    </Match>
+                </Switch>
+            </ErrorBoundary>
+        </>
     );
 };
 

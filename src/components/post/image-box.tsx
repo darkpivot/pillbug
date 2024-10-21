@@ -1,19 +1,38 @@
 import { Attachment } from "megalodon/lib/src/entities/attachment";
-import { Component, createSignal, For, JSX, splitProps } from "solid-js";
+import {
+    Component,
+    createResource,
+    createSignal,
+    For,
+    JSX,
+    Match,
+    splitProps,
+    Switch,
+} from "solid-js";
 import { cn } from "~/lib/utils";
 import { ImageLightbox } from "./image-lightbox";
+import { useSettings } from "~/lib/settings-manager";
+import { decode } from "blurhash";
 
 interface ImageAttachmentProps {
     attachment: Attachment;
     aspectRatio: number;
     imageIndex: number;
     onClick?: (idx: number) => void;
+    sensitive: boolean;
 }
 
 const ImageAttachment: Component<ImageAttachmentProps> = (props) => {
+    const settings = useSettings();
+    const [hidingSensitiveContent, setHidingSensitiveContent] =
+        createSignal<boolean>(props.sensitive);
     let src = props.attachment.preview_url;
+    if (settings.getPersistent().useFullQualityImagesAsThumbnails) {
+        src = props.attachment.url;
+    }
     let srcset = "";
     let sizes = "";
+
     if (props.attachment.preview_url && props.attachment.meta) {
         // Most implementations other than Pleroma/Akkoma
         const small_width = props.attachment.meta.small?.width ?? 400;
@@ -23,23 +42,88 @@ const ImageAttachment: Component<ImageAttachmentProps> = (props) => {
         sizes += `(max-width: ${small_width}px) ${small_width}px, ${orig_width}px`;
     }
 
+    let w = Math.round(props.attachment.meta?.width ?? 256);
+    let h = Math.round(
+        props.attachment.meta?.height ?? 256 * props.aspectRatio
+    );
+
+    if (
+        settings.getPersistent().skipBlurHashClickThroughOnSensitiveMedia &&
+        hidingSensitiveContent()
+    ) {
+        setHidingSensitiveContent(false);
+    }
+
+    const [blurHashImage] = createResource(async () => {
+        if (!props.sensitive) {
+            return undefined;
+        }
+        let blurhash =
+            props.attachment.blurhash ?? "L~D1N_WUofj[tWa$odazM{jcjsWC"; // default derived from winxp bliss wallpaper
+        const pixels = decode(blurhash, w, h);
+        const canvas = document.createElement("canvas");
+        const ctx = canvas.getContext("2d");
+        if (ctx === null) {
+            return undefined;
+        }
+        const imageData = ctx.createImageData(w, h);
+        imageData.data.set(pixels);
+        ctx.putImageData(imageData, 0, 0);
+        return canvas.toDataURL();
+    });
+
     return (
-        <button
-            class="w-full"
-            onClick={() => {
-                console.log(`Hello! onClick = ${props.onClick}`);
-                props.onClick?.(props.imageIndex);
-            }}
-        >
-            <img
-                src={src!}
-                srcset={srcset}
-                sizes={sizes}
-                alt={props.attachment.description!}
-                class="object-cover w-full"
-                style={{ "aspect-ratio": props.aspectRatio }}
-            />
-        </button>
+        <Switch>
+            <Match when={!hidingSensitiveContent()}>
+                <button
+                    class={
+                        settings.getPersistent().imagesInPostsExpandToFullWidth
+                            ? "w-full"
+                            : "m-auto"
+                    }
+                    onClick={() => {
+                        console.log(`Hello! onClick = ${props.onClick}`);
+                        props.onClick?.(props.imageIndex);
+                    }}
+                >
+                    <img
+                        src={src!}
+                        srcset={srcset}
+                        sizes={sizes}
+                        alt={props.attachment.description!}
+                        class="object-cover w-full"
+                        style={{ "aspect-ratio": props.aspectRatio }}
+                    />
+                </button>
+            </Match>
+            <Match when={hidingSensitiveContent()}>
+                <button
+                    class={
+                        settings.getPersistent().imagesInPostsExpandToFullWidth
+                            ? "w-full"
+                            : "m-auto"
+                    }
+                    onClick={() => {
+                        setHidingSensitiveContent(false);
+                    }}
+                >
+                    <div style="position: relative">
+                        <div style="position:absolute; top: 30%; width: 100%; text-align: center; padding: 1em; background: #00000066; color: #ffffff">
+                            click to show
+                        </div>
+                        <img
+                            src={blurHashImage()}
+                            sizes={sizes}
+                            alt={props.attachment.description!}
+                            class="object-cover w-full"
+                            style={{
+                                "aspect-ratio": props.aspectRatio,
+                            }}
+                        />
+                    </div>
+                </button>
+            </Match>
+        </Switch>
     );
 };
 
@@ -47,10 +131,11 @@ interface ImageBoxRowProps extends JSX.HTMLAttributes<HTMLDivElement> {
     images: Array<Attachment>;
     startIndex: number;
     onImageClick: (idx: number) => void;
+    sensitive: boolean;
 }
 
 const ImageBoxRow: Component<ImageBoxRowProps> = (props) => {
-    const [, rest] = splitProps(props, ["class", "images"]);
+    const [, rest] = splitProps(props, ["class", "images", "sensitive"]);
 
     // placeholder default that seems workable enough
     const defaultAspect = 4 / 3;
@@ -85,6 +170,7 @@ const ImageBoxRow: Component<ImageBoxRowProps> = (props) => {
                         aspectRatio={aspectRatio}
                         imageIndex={props.startIndex + index()}
                         onClick={props.onImageClick!}
+                        sensitive={props.sensitive}
                     />
                 )}
             </For>
@@ -94,6 +180,7 @@ const ImageBoxRow: Component<ImageBoxRowProps> = (props) => {
 
 export interface ImageBoxProps extends JSX.HTMLAttributes<HTMLDivElement> {
     attachments: Array<Attachment>;
+    sensitive: boolean;
 }
 
 // Turns an array of a given type into an array of arrays, sized appropriately
@@ -150,6 +237,7 @@ export const ImageBox: Component<ImageBoxProps> = (props) => {
                             images={chunk}
                             startIndex={index() * chunkSize}
                             onImageClick={onImageClick}
+                            sensitive={props.sensitive}
                         />
                     )}
                 </For>

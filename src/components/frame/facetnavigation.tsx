@@ -8,11 +8,25 @@ import {
     FaSolidMagnifyingGlass,
     FaSolidPerson,
     FaSolidQuestion,
+    FaSolidWrench,
 } from "solid-icons/fa";
-import { Component, createResource, For, JSX, Show } from "solid-js";
-import { useExpandMenuSignalContext } from "~/Frame";
+import {
+    Component,
+    createEffect,
+    createMemo,
+    createResource,
+    For,
+    JSX,
+    Show,
+} from "solid-js";
 import { useAuth } from "~/auth/auth-manager";
+import {
+    LayoutLeftColumn,
+    LayoutMainColumn,
+} from "~/components/layout/columns";
 import { cn } from "~/lib/utils";
+import { useFrameContext } from "./context";
+import { useSettings } from "~/lib/settings-manager";
 
 class FacetDefinition {
     constructor(public label: string, public url: string) {}
@@ -22,31 +36,31 @@ const FacetNavigationItem: Component<{
     children: JSX.Element;
     href: string;
 }> = (props) => {
-    const expandMenuContext = useExpandMenuSignalContext();
-    const activeClasses = ["active-facet", "font-bold"];
-    const classes = [
-        "facet-navigation-item",
-        "block",
-        "w-full",
-        "p-3",
-        "border-2",
-        "border-transparent",
-        "hover:border-fuchsia-900",
-        "rounded-xl",
-    ];
-    const location = useLocation();
-    if (location.pathname.startsWith(props.href)) {
-        for (let c of activeClasses) {
-            classes.push(c);
-        }
-    }
+    const frameContext = useFrameContext();
+    const classList = createMemo(() => {
+        const location = useLocation();
+        const isActive = location.pathname.startsWith(props.href);
+
+        return {
+            ["facet-navigation-item"]: true,
+            ["block"]: true,
+            ["w-full"]: true,
+            ["p-3"]: true,
+            ["border-2"]: true,
+            ["border-transparent"]: true,
+            ["hover:border-fuchsia-900"]: true,
+            ["rounded-xl"]: true,
+            ["active-facet"]: isActive,
+            ["font-bold"]: isActive,
+        };
+    });
 
     return (
         <li class="flex flex-initial">
             <a
-                class={cn(classes)}
+                classList={classList()}
                 href={props.href}
-                onClick={() => expandMenuContext.setMenuOpen(false)}
+                onClick={() => frameContext.setNavPopupMenuOpen(false)}
             >
                 {props.children}
             </a>
@@ -54,10 +68,9 @@ const FacetNavigationItem: Component<{
     );
 };
 
-export const FacetNavigationFrame: Component<{ children: JSX.Element }> = (
-    props
-) => {
+export const FacetNavigation: Component = (props) => {
     const auth = useAuth();
+    const settings = useSettings();
 
     const profileUrl = () => {
         if (auth.signedIn) {
@@ -66,25 +79,24 @@ export const FacetNavigationFrame: Component<{ children: JSX.Element }> = (
         return undefined;
     };
 
-    const expandMenuContext = useExpandMenuSignalContext();
+    const frameContext = useFrameContext();
 
     return (
-        <div class="flex flex-grow flex-row mx-4 gap-4 md:justify-center">
+        <Show when={frameContext.showNav() || frameContext.navPopupMenuOpen()}>
             <div
                 classList={{
-                    "w-64": true,
+                    "m-2": true,
+                    "w-full": true,
                     "rounded-lg": true,
                     border: true,
                     "bg-card": true,
                     "text-card-foreground": true,
                     "shadow-sm": true,
                     fixed: true,
-                    hidden: !expandMenuContext.menuOpen(),
-                    "md:flex-none": true,
-                    "md:mt-4": true,
-                    "md:flex": true,
+                    "col-span-full": true,
+                    hidden: !frameContext.navPopupMenuOpen(),
+                    "md:block": true,
                     "md:static": true,
-                    "md:h-fit": true,
                 }}
             >
                 <ul id="facet-menu" class="flex flex-col list-none p-6 gap-1">
@@ -110,14 +122,16 @@ export const FacetNavigationFrame: Component<{ children: JSX.Element }> = (
                         <FaSolidQuestion />
                         about pillbug
                     </FacetNavigationItem>
+                    <Show when={settings.getPersistent().enableDevTools}>
+                        <FacetNavigationItem href="/dev/editDialog">
+                            <FaSolidWrench />
+                            Test Editor
+                        </FacetNavigationItem>
+                    </Show>
                 </ul>
             </div>
-
-            <div class="overflow-auto flex-grow max-w-4xl ">
-                {props.children}
-            </div>
-        </div>
+        </Show>
     );
 };
 
-export default FacetNavigationFrame;
+export default FacetNavigation;

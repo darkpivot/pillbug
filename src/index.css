@@ -46,6 +46,8 @@
     --ring: 240 5.9% 10%;
 
     --radius: 0.5rem;
+
+    --top-bar-height: 4rem;
   }
 
   .dark,
@@ -136,4 +138,185 @@ a {
     
     .post-content a {
         text-decoration: underline;
+}
+
+.post-content ul, .post-content ul li {
+    list-style: disc;
+    margin-left: 1em;
+}
+.post-content ol, .post-content ol li  {
+    list-style: decimal;
+    margin-left: 1em;
+
+}
+
+.post-content h1 {
+    font-size: x-large;
+}
+.post-content h2 {
+    font-size: larger;
+}
+.post-content h3 {
+    font-size: large;
+}
+
+#layoutColumnsRoot {
+    display: grid;
+    width: 100vw;
+    height: 100%;
+
+    max-width: 76rem;
+
+    grid-template-columns: auto;
+    /* The first grid item should only occupy the minimum height needed, it could be a user profile or maybe empty space */
+        grid-template-rows: min-content auto;
+    grid-auto-flow: columns;
+    margin: auto;
+    min-width: 0;
+    min-height: 0;
+}
+#scrollableArea {
+    overflow:auto;
+    width: 100vw;
+    flex: 1 1 auto; /* fill containing flexbox */
+    flex-grow: 1;
+}
+
+#editorRoot {
+    display: grid;
+    height: 100%;
+    width: 100%;
+    overflow: auto;
+    grid-template-rows: 50% 50%;
+}
+
+#editorEditor {
+    grid-row: span 2;
+}
+
+#editorShareTarget {
+    overflow: auto;
+    margin: 0.5rem;
+    padding: 0.5rem;
+}
+@media (min-width: 768px) {
+    #layoutColumnsRoot {
+        grid-template-columns: 18rem auto;
+        /* The sidebar is shown so we want the single remaining row to take the full height */
+            grid-template-rows: auto;
+    }
+
+    #layoutMainColumn {
+        padding: 0.25rem;
+    }
+}
+
+@media (min-width: 1024px) {
+    #layoutMainColumn {
+        padding: 0.5rem;
+    }
+}
+
+@media (min-width: 1280px) {
+    #layoutMainColumn {
+        padding: 1.5rem;
+    }
+}
+/* Singular left column that may contain blocks. Stacks above main column if the viewport is too narrow */
+#layoutLeftColumn {}
+
+#layoutMainColumn {
+    padding-bottom: 2em;
+    display: flex;
+    flex-direction: column;
+}
+
+#layoutTopBar {
+    height: var(--top-bar-height)
+
+}
+
+#root {
+    overflow-wrap: anywhere;
+}
+
+button {
+    overflow-wrap: normal;
+}
+
+#notifications-facet {
+    display: grid;
+    width: 100%;
+
+    padding: 0.5rem;
+
+    grid-template-columns: auto;
+    grid-template-rows: repeat(auto);
+    grid-auto-flow: columns;
+    row-gap: 0.5rem;
+    overflow: hidden;
+    margin: auto;
+
+}
+
+#notifications-facet .pbCard {
+    display: block;
+    padding-left: 1rem;
+    padding-right: 1rem;
+    padding-top: 0.8rem;
+    padding-bottom: 0.8rem;
+}
+
+#notifications-facet .pbCard>a {
+    text-decoration: underline;
+    margin-inline: 0.2em;
+}
+
+/* Generic card element for pillbug. This is some kind of rectangle that holds stuff. Doesn't define padding. */
+.pbCard {
+    border-color: hsl(var(--border));
+    background-color: hsl(var(--card));
+    color: hsl(var(--card-foreground));
+    border-radius: var(--radius);
+
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+
+/* When used inside of a pbCard, ends after one line */
+.pbSingleLineBlock {
+    display: block;
+    overflow: hidden;
+    white-space: nowrap;
+    text-overflow: ellipsis;
+}
+
+.pbPostEditor {
+    min-height: 5em;
+}
+
+#editorRoot .pbPostEditor {
+    min-height: 50vh;
+}
+
+summary::marker {
+    line-height: auto;
+}
+
+html.setting-alignColumnsLeft #layoutColumnsRoot {
+    margin-left: 0px;
+}
+
+.pbPostOutside {
+    display: grid;
+    grid-template-columns: min-content 1fr;
+    grid-template-rows: max-content;
+    word-break: break-word;
+    word-wrap: break-word;
+
+}
+
+* {
+    scrollbar-width: 32px;
+    scrollbar-color: red;
 }

@@ -7,6 +7,7 @@
     "scripts": {
         "start": "vite",
         "dev": "vite",
+        "dev-host": "vite --host",
         "build": "vite build",
         "serve": "vite preview"
     },
@@ -29,9 +30,12 @@
         "@kobalte/core": "^0.13.6",
         "@solid-primitives/storage": "^4.2.1",
         "@solidjs/router": "^0.14.5",
+        "blurhash": "^2.0.5",
         "class-variance-authority": "^0.7.0",
         "clsx": "^2.1.1",
         "digraph-js": "^2.2.3",
+        "exifreader": "^4.23.7",
+        "filesize": "^10.1.6",
         "get-urls": "^12.1.0",
         "hast-util-find-and-replace": "^5.0.1",
         "hastscript": "^9.0.0",
@@ -44,6 +48,7 @@
         "solid-js": "^1.8.11",
         "tailwind-merge": "^2.5.2",
         "tailwindcss-animate": "^1.0.7",
+        "tinykeys": "^3.0.0",
         "unified": "^11.0.5",
         "url-regex-safe": "^4.0.0"
     }

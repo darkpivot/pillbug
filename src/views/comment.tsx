@@ -5,7 +5,6 @@ import HtmlSandbox, { HtmlSandboxSpan } from "./htmlsandbox";
 import { Timestamp } from "~/components/post/timestamp";
 import { DateTime } from "luxon";
 import { AvatarLink } from "~/components/user/avatar";
-import { NewCommentEditor } from "~/components/post/comments";
 import { BsReply } from "solid-icons/bs";
 import {
     ContextMenu,
@@ -17,6 +16,7 @@ import { TextField, TextFieldTextArea } from "~/components/ui/text-field";
 import { VisibilityIcon } from "~/components/visibility-icon";
 import { ContentGuard } from "~/components/content-guard";
 import { ImageBox } from "~/components/post/image-box";
+import { NewCommentEditor } from "~/components/editor/comments";
 
 export type CommentProps = {
     status: Status;
@@ -64,8 +64,11 @@ export const CommentPostComponent: Component<CommentProps> = (postData) => {
             </div>
             <div class="md:px-3 pt-2">
                 <ContentGuard warnings={status.spoiler_text}>
-                    <ImageBox attachments={status.media_attachments} />
                     <HtmlSandbox html={status.content} emoji={status.emojis} />
+                    <ImageBox
+                        attachments={status.media_attachments}
+                        sensitive={status.sensitive}
+                    />
                 </ContentGuard>
             </div>
             <div>
